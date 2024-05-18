@@ -72,6 +72,7 @@ def reveal_empty_tiles():
     Returns:
         None
     """
+    global safe_tiles
     empty_tiles = []
     for row in range(rows):
         for col in range(cols):
@@ -85,24 +86,26 @@ def reveal_empty_tiles():
                         and grid_colors[row + i][col + j] == unknown_color):
                     grid_colors[row + i][col + j] = known_color
                     show_bomb_count[row + i][col + j] = True
+                    safe_tiles -= 1
                     if count_bombs(row + i, col + j) == 0:
                         empty_tiles.append((row + i, col + j))
 
 
-def change_clicked_tile(col, event, game_over, row):
+def change_clicked_tile(row, col, event, game_over):
     """
     Change the state of the clicked tile based on the mouse event.
 
     Args:
+        row (int): The row index of the tile.
         col (int): The column index of the tile.
         event: The mouse event triggering the tile change.
         game_over (bool): Flag indicating if the game is over.
-        row (int): The row index of the tile.
 
     Returns:
         bool: Flag indicating if the game is over after the tile change.
     """
     # left-click to reveal unknown tiles
+    global safe_tiles
     if grid[row][col].collidepoint(event.pos):
         if grid_colors[row][col] == unknown_color and event.button == 1:
             # if bomb is clicked, reveal all bombs and end game
@@ -116,6 +119,7 @@ def change_clicked_tile(col, event, game_over, row):
                 print("left-clicked on tile", row, col, "with", count_bombs(row, col), "bombs around")
                 grid_colors[row][col] = known_color
                 show_bomb_count[row][col] = True
+                safe_tiles -= 1
                 if count_bombs(row, col) == 0:
                     reveal_empty_tiles()
 
@@ -150,6 +154,11 @@ def draw_screen():
                 text = font.render(str(count), True, (255, 255, 255))
                 text_rect = text.get_rect(center=(grid[row][col].centerx, grid[row][col].centery))
                 screen.blit(text, text_rect)
+    if safe_tiles == 0:
+        font = pygame.font.Font(None, 100)
+        text = font.render("You Won! Press 'R' to play again!", True, (0, 0, 0), (255, 255, 255))
+        text_rect = text.get_rect(center=(width // 2, height // 2))
+        screen.blit(text, text_rect)
     # update the screen
     pygame.display.flip()
 
@@ -163,9 +172,10 @@ def restart_game():
     Returns:
         None
     """
-    global grid, grid_colors, show_bomb_count, bomb_positions
+    global grid, grid_colors, show_bomb_count, bomb_positions, safe_tiles
     grid, grid_colors, show_bomb_count = create_grid()
     bomb_positions = set_bombs()
+    safe_tiles = rows * cols - bombs
     game_loop()
 
 
@@ -192,7 +202,7 @@ def game_loop():
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
                 for row in range(rows):
                     for col in range(cols):
-                        game_over = change_clicked_tile(col, event, game_over, row)
+                        game_over = change_clicked_tile(row=row, col=col, event=event, game_over=game_over)
 
         # draw the screen
         draw_screen()
@@ -212,6 +222,7 @@ if __name__ == "__main__":
     min_margin = 3 * gap
     tiles = (rows, cols) = (16, 12)
     bombs = 20
+    safe_tiles = rows * cols - bombs
     unknown_color = "white"
     bomb_color = "orange"
     flag_color = "red"
