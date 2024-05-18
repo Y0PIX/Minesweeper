@@ -41,6 +41,26 @@ def count_bombs(row, col):
     return count
 
 
+def reveal_empty_tiles():
+    """Reveal all empty tiles around the clicked tile. If an empty tile is found, add it to a list and repeat the
+    process."""
+    empty_tiles = []
+    for row in range(rows):
+        for col in range(cols):
+            if grid_colors[row][col] == known_color and show_bomb_count[row][col] and count_bombs(row, col) == 0:
+                empty_tiles.append((row, col))
+    while empty_tiles:
+        row, col = empty_tiles.pop()
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                if (0 <= row + i < rows) and (0 <= col + j < cols):
+                    if (i != 0 or j != 0) and grid_colors[row + i][col + j] == unknown_color:
+                        grid_colors[row + i][col + j] = known_color
+                        show_bomb_count[row + i][col + j] = True
+                        if count_bombs(row + i, col + j) == 0:
+                            empty_tiles.append((row + i, col + j))
+
+
 def game_loop():
     running = True
     game_over = False
@@ -56,16 +76,19 @@ def game_loop():
                         # left-click to reveal unknown tiles
                         if (grid[row][col].collidepoint(event.pos) and grid_colors[row][col] == unknown_color and
                                 event.button == 1):
-                            # if bomb is clicked, reveal bomb and end game
+                            # if bomb is clicked, reveal all bombs and end game
                             if (row, col) in bomb_positions:
-                                print("Game Over")
-                                grid_colors[row][col] = bomb_color
+                                print("You clicked on a bomb. Game Over!")
+                                for bomb_row, bomb_col in bomb_positions:
+                                    grid_colors[bomb_row][bomb_col] = bomb_color
                                 game_over = True
                             # if no bombs are clicked, reveal number of bombs around the tile
                             else:
                                 print("left-clicked on tile", row, col, "with", count_bombs(row, col), "bombs around")
                                 grid_colors[row][col] = known_color
                                 show_bomb_count[row][col] = True
+                                if count_bombs(row, col) == 0:
+                                    reveal_empty_tiles()
 
                         # right-click to mark unknown tiles as bombs
                         elif (grid[row][col].collidepoint(event.pos) and grid_colors[row][col] == unknown_color and
