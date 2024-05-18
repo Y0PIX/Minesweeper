@@ -1,17 +1,21 @@
 import pygame
 import random
 
+
 def create_grid():
     temp_grid = []
     temp_grid_colors = []
+    temp_show_bomb_count = []
     for row in range(rows):
         temp_grid.append([])
         temp_grid_colors.append([])
+        temp_show_bomb_count.append([])
         for col in range(cols):
             temp_grid[row].append((pygame.Rect(tile_length * row + gap * row + margin_left, tile_length * col +
                                                gap * col + margin_top, tile_length, tile_length)))
             temp_grid_colors[row].append(unknown_color)
-    return temp_grid, temp_grid_colors
+            temp_show_bomb_count[row].append(False)
+    return temp_grid, temp_grid_colors, temp_show_bomb_count
 
 
 def set_bombs():
@@ -25,6 +29,16 @@ def set_bombs():
             col = random.randint(0, cols - 1)
         temp_bomb_positions.append((row, col))
     return temp_bomb_positions
+
+
+def count_bombs(row, col):
+    count = 0
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            if (0 <= row + i < rows) and (0 <= col + j < cols):
+                if (i != 0 or j != 0) and (row + i, col + j) in bomb_positions:
+                    count += 1
+    return count
 
 
 def game_loop():
@@ -42,13 +56,16 @@ def game_loop():
                         # left-click to reveal unknown tiles
                         if (grid[row][col].collidepoint(event.pos) and grid_colors[row][col] == unknown_color and
                                 event.button == 1):
+                            # if bomb is clicked, reveal bomb and end game
                             if (row, col) in bomb_positions:
                                 print("Game Over")
                                 grid_colors[row][col] = bomb_color
                                 game_over = True
+                            # if no bombs are clicked, reveal number of bombs around the tile
                             else:
-                                print("left-clicked on tile", row, col)
+                                print("left-clicked on tile", row, col, "with", count_bombs(row, col), "bombs around")
                                 grid_colors[row][col] = known_color
+                                show_bomb_count[row][col] = True
 
                         # right-click to mark unknown tiles as bombs
                         elif (grid[row][col].collidepoint(event.pos) and grid_colors[row][col] == unknown_color and
@@ -69,6 +86,12 @@ def game_loop():
         for row in range(rows):
             for col in range(cols):
                 pygame.draw.rect(screen, grid_colors[row][col], grid[row][col])
+                if show_bomb_count[row][col]:
+                    count = count_bombs(row, col)
+                    font = pygame.font.Font(None, tile_length * 2 // 3)
+                    text = font.render(str(count), True, (255, 255, 255))
+                    text_rect = text.get_rect(center=(grid[row][col].centerx, grid[row][col].centery))
+                    screen.blit(text, text_rect)
 
         # flip() the display to put your work on screen
         pygame.display.flip()
@@ -99,7 +122,8 @@ if __name__ == "__main__":
     margin_left = margin + (play_size_width - (tile_length * rows + gap * (rows - 1))) // 2
     margin_top = margin + (play_size_height - (tile_length * cols + gap * (cols - 1))) // 2
 
-    grid, grid_colors = create_grid()
+    # create grid, set bombs and start game loop
+    grid, grid_colors, show_bomb_count = create_grid()
     bomb_positions = set_bombs()
     game_loop()
     pygame.quit()
